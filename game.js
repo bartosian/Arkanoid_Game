@@ -4,6 +4,8 @@ let game = {
     ball: undefined,
     width: 640,
     height: 360,
+    running: true,
+    score: 0,
     rows: 4,
     cols: 8,
     blocks: [],
@@ -16,6 +18,8 @@ let game = {
     init: function() {
         let canvas = document.getElementById("myCanvas");
         this.ctx = canvas.getContext("2d");
+        this.ctx.font = "Arial 20px";
+        this.ctx.fillStyle = "white";
 
         window.addEventListener("keydown", function (e) {
             if(e.keyCode === 37) {
@@ -70,12 +74,14 @@ let game = {
         this.ctx.clearRect(0, 0, this.width, this.height);
         this.ctx.drawImage(this.sprites.background, 0, 0);
 
-        this.ctx.drawImage(this.sprites.ball, this.ball.x * this.ball.frame, 0, this.ball.width, this.ball.height, this.ball.x, this.ball.y, this.ball.width, this.ball.height);
+        this.ctx.drawImage(this.sprites.ball, this.ball.width * this.ball.frame, 0, this.ball.width, this.ball.height, this.ball.x, this.ball.y, this.ball.width, this.ball.height);
         this.ctx.drawImage(this.sprites.platform, this.platform.x, this.platform.y);
         this.blocks.forEach(function(el) {
             if(el.isAlive) {
                 this.ctx.drawImage(this.sprites.block, el.x, el.y);
             }
+
+        this.ctx.fillText("S C O R E : " + this.score, 15, this.height - 15);
 
         }, this);
 
@@ -105,12 +111,18 @@ let game = {
     run: function() {
         this.update();
         this.render();
-        window.requestAnimationFrame(function() {
-            game.run();
-        });
+
+        if(this.running) {
+            window.requestAnimationFrame(function() {
+                game.run();
+            });
+        }
+
     },
-    over: function() {
-        console.log("Game over!");
+    over: function(message) {
+        this.running = false;
+        alert(message);
+        window.location.reload();
     }
 };
 
@@ -126,6 +138,17 @@ game.ball = {
     jump: function() {
         this.dy = - this.velocity;
         this.dx = - this.velocity;
+        this.animate();
+    },
+    animate: function() {
+        setInterval(function () {
+            ++game.ball.frame;
+
+            if(game.ball.frame > 3) {
+                game.ball.frame = 0;
+            }
+        }, 100);
+
     },
     move: function () {
         this.x += this.dx;
@@ -145,12 +168,20 @@ game.ball = {
         }
     },
     bumpBlock: function(block) {
+        ++game.score;
         this.dy *= -1;
         block.isAlive = false;
-    },
-    bumpPlatform: function(block) {
-        this.dy = -this.velocity;
 
+        if(game.score >= game.blocks.length) {
+            game.over("You win!");
+        }
+    },
+    onTheLeftSide: function(platform) {
+        return (this.x + this.width/2) < (platform.x + platform.width/2);
+    },
+    bumpPlatform: function(platform) {
+        this.dy = -this.velocity;
+        this.dx = this.onTheLeftSide(platform) ? -this.velocity : this.velocity;
     },
     checkBounds: function () {
         let x = this.x + this.dx;
@@ -166,7 +197,7 @@ game.ball = {
             this.y = 0;
             this.dy = this.velocity;
         } else if(y + this.height > game.height) {
-            game.over();
+            game.over("Game Over!");
         }
     }
 };
